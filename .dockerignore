@@ -1,0 +1,13 @@
+**/bin/
+**/obj/
+**/.vs/
+**/.idea/
+**/.vscode/
+**/__pycache__/
+**/*.pyc
+**/.venv/
+**/venv/
+**/_cache/
+.git/
+.github/
+deploy/

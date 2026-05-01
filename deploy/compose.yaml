@@ -1,0 +1,64 @@
+services:
+  florence-api:
+    image: danbro96/florence-api:${IMAGE_TAG:-latest}
+    container_name: florence-api
+    environment:
+      Florence__WorkerUrl: http://florence-worker:9000
+      Florence__MaxImageBytes: ${MAX_IMAGE_BYTES:-8388608}
+      Florence__RequestTimeoutSeconds: ${REQUEST_TIMEOUT:-60}
+      Auth__ApiKeys__0__Key: ${FLORENCE_API_KEY:?required}
+      Auth__ApiKeys__0__Name: ${FLORENCE_API_KEY_NAME:-prod}
+      Auth__AllowedOrigins__0: ${ALLOWED_ORIGIN:-}
+      RateLimit__RequestsPerMinute: ${RATE_LIMIT:-60}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL:-grpc}
+      OTEL_RESOURCE_ATTRIBUTES: ${OTEL_RESOURCE_ATTRIBUTES:-deployment.environment=prod,host.name=medelynas}
+    ports:
+      - "${HOST_PORT:-40380}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/healthz || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      florence-worker:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - default
+      - medelynas_telemetry
+
+  florence-worker:
+    image: danbro96/florence-worker:${IMAGE_TAG:-latest}
+    container_name: florence-worker
+    devices:
+      - /dev/dri:/dev/dri
+    group_add:
+      # `getent group render | cut -d: -f3` on the host; default 993 is common on Debian/Ubuntu.
+      - "${RENDER_GID:-993}"
+    environment:
+      MODEL_ID: ${MODEL_ID:-microsoft/Florence-2-base-ft}
+      MODEL_DIR: /cache/florence-ov
+      DEVICE: ${DEVICE:-}
+    volumes:
+      - florence-cache:/cache
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9000/healthz || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 10
+      # First boot converts the model (5–10 min on Arc + disk I/O); generous to avoid
+      # the worker being marked unhealthy mid-conversion. Subsequent starts are fast.
+      start_period: 600s
+    restart: unless-stopped
+
+volumes:
+  florence-cache:
+
+networks:
+  default:
+    driver: bridge
+  medelynas_telemetry:
+    external: true
+    name: medelynas_telemetry

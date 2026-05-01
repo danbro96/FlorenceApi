@@ -1,0 +1,32 @@
+# .NET build output
+**/bin/
+**/obj/
+
+# IDE
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# Local model cache (OpenVINO IR; ~600 MB)
+**/_cache/
+florence-worker/_cache/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Local secrets / overrides
+*.local.json
+appsettings.Development.local.json
+.env
+.env.*
+!.env.example
