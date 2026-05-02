@@ -1,4 +1,4 @@
-FROM ubuntu:22.04 AS runtime
+FROM ubuntu:24.04 AS runtime
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PIP_NO_CACHE_DIR=1 \
@@ -6,11 +6,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     HF_HOME=/cache/hf
 
-# Add deadsnakes PPA for Python 3.12, then install Python and GPU packages
+# Ubuntu 24.04 has Python 3.12 in default repos; add Intel GPU packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      software-properties-common && \
-    add-apt-repository -y ppa:deadsnakes/ppa && \
-    apt-get update && apt-get install -y --no-install-recommends \
       python3.12 python3-pip python3.12-venv \
       gnupg gpg-agent wget ca-certificates curl && \
     wget -qO - https://repositories.intel.com/gpu/intel-graphics.key \
