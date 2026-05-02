@@ -8,11 +8,12 @@ services:
       Florence__RequestTimeoutSeconds: ${REQUEST_TIMEOUT:-60}
       Auth__ApiKeys__0__Key: ${FLORENCE_API_KEY:?required}
       Auth__ApiKeys__0__Name: ${FLORENCE_API_KEY_NAME:-prod}
-      Auth__AllowedOrigins__0: ${ALLOWED_ORIGIN:-}
+      Auth__AllowedOrigins__0: ${ALLOWED_ORIGIN:-https://vision.lupira.com}
       RateLimit__RequestsPerMinute: ${RATE_LIMIT:-60}
-      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
-      OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL:-grpc}
-      OTEL_RESOURCE_ATTRIBUTES: ${OTEL_RESOURCE_ATTRIBUTES:-deployment.environment=prod,host.name=medelynas}
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:5080/api/default
+      OTEL_EXPORTER_OTLP_HEADERS: "Authorization=Basic TOKENHERE"
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_RESOURCE_ATTRIBUTES: deployment.environment=prod,host.name=medelynas
     ports:
       - "${HOST_PORT:-40380}:8080"
     healthcheck:
@@ -42,7 +43,7 @@ services:
       MODEL_DIR: /cache/florence-ov
       DEVICE: ${DEVICE:-}
     volumes:
-      - florence-cache:/cache
+      - /mnt/tank2/appdata/florence_api/cache:/cache
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:9000/healthz || exit 1"]
       interval: 30s
@@ -52,9 +53,6 @@ services:
       # the worker being marked unhealthy mid-conversion. Subsequent starts are fast.
       start_period: 600s
     restart: unless-stopped
-
-volumes:
-  florence-cache:
 
 networks:
   default:

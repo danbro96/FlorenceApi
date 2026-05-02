@@ -10,7 +10,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 # Pin intel-opencl-icd to 25.13.33276.16: newer compute-runtime 25.18.x has reported
 # A380 OpenCL regressions. Re-evaluate at the next OpenVINO LTS.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      gpg-agent wget ca-certificates curl && \
+      gnupg gpg-agent wget ca-certificates curl && \
     wget -qO - https://repositories.intel.com/gpu/intel-graphics.key \
       | gpg --dearmor -o /usr/share/keyrings/intel-graphics.gpg && \
     echo "deb [arch=amd64 signed-by=/usr/share/keyrings/intel-graphics.gpg] https://repositories.intel.com/gpu/ubuntu jammy unified" \
