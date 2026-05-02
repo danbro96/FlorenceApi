@@ -27,7 +27,7 @@ RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1
 WORKDIR /app
 
 COPY florence-worker/requirements.txt .
-RUN pip install --upgrade --break-system-packages pip && pip install --break-system-packages -r requirements.txt
+RUN pip install --break-system-packages -r requirements.txt
 COPY florence-worker/ov_florence2_helper.py florence-worker/app.py ./
 
 RUN mkdir -p /cache
