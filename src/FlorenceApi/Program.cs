@@ -101,6 +101,7 @@ if (!string.IsNullOrWhiteSpace(otlpEndpoint))
 
 var app = builder.Build();
 
+app.UseStaticFiles();
 if (allowedOrigins.Length > 0) app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
