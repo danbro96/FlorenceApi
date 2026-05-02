@@ -8,7 +8,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 # Ubuntu 24.04 has Python 3.12 in default repos; add Intel GPU packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      python3.12 python3-pip ca-certificates curl gnupg wget && \
+      python3.12 python3-pip python3.12-venv \
+      gnupg gpg-agent wget ca-certificates curl && \
     wget -qO - https://repositories.intel.com/gpu/intel-graphics.key \
       | gpg --dearmor -o /usr/share/keyrings/intel-graphics.gpg && \
     echo "deb [arch=amd64 signed-by=/usr/share/keyrings/intel-graphics.gpg] https://repositories.intel.com/gpu/ubuntu noble unified" \
@@ -17,7 +18,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       intel-level-zero-gpu \
       level-zero \
       ocl-icd-libopencl1 && \
-    apt-get remove -y gnupg wget && \
     rm -rf /var/lib/apt/lists/*
 
 # Set python3.12 as default python3
@@ -27,7 +27,7 @@ RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1
 WORKDIR /app
 
 COPY florence-worker/requirements.txt .
-RUN pip install --break-system-packages --index-url https://download.pytorch.org/whl/cpu -r requirements.txt
+RUN pip install --break-system-packages -r requirements.txt
 COPY florence-worker/ov_florence2_helper.py florence-worker/app.py ./
 
 RUN mkdir -p /cache
