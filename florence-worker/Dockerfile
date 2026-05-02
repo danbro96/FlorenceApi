@@ -6,15 +6,12 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     HF_HOME=/cache/hf
 
-# Install Python first (Ubuntu base needs it explicitly)
+# Add deadsnakes PPA for Python 3.12, then install Python and GPU packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      python3.12 python3-pip && \
-    rm -rf /var/lib/apt/lists/*
-
-# Intel GPU runtime for Arc (Alchemist) — required for OpenVINO GPU inference.
-# Pin intel-opencl-icd to 25.13.33276.16: newer compute-runtime 25.18.x has reported
-# A380 OpenCL regressions. Re-evaluate at the next OpenVINO LTS.
-RUN apt-get update && apt-get install -y --no-install-recommends \
+      software-properties-common && \
+    add-apt-repository -y ppa:deadsnakes/ppa && \
+    apt-get update && apt-get install -y --no-install-recommends \
+      python3.12 python3-pip python3.12-venv \
       gnupg gpg-agent wget ca-certificates curl && \
     wget -qO - https://repositories.intel.com/gpu/intel-graphics.key \
       | gpg --dearmor -o /usr/share/keyrings/intel-graphics.gpg && \
@@ -28,10 +25,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     apt-mark hold intel-opencl-icd && \
     rm -rf /var/lib/apt/lists/*
 
+# Set python3.12 as default python3
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1 && \
+    update-alternatives --install /usr/bin/python python /usr/bin/python3.12 1
+
 WORKDIR /app
 
 COPY florence-worker/requirements.txt .
-RUN pip3 install --upgrade pip && pip3 install -r requirements.txt
+RUN pip install --upgrade pip && pip install -r requirements.txt
 
 COPY florence-worker/ov_florence2_helper.py florence-worker/app.py ./
 
