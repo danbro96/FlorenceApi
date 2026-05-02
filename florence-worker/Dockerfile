@@ -12,14 +12,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       gnupg gpg-agent wget ca-certificates curl && \
     wget -qO - https://repositories.intel.com/gpu/intel-graphics.key \
       | gpg --dearmor -o /usr/share/keyrings/intel-graphics.gpg && \
-    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/intel-graphics.gpg] https://repositories.intel.com/gpu/ubuntu jammy unified" \
+    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/intel-graphics.gpg] https://repositories.intel.com/gpu/ubuntu noble unified" \
       > /etc/apt/sources.list.d/intel-gpu.list && \
     apt-get update && apt-get install -y --no-install-recommends \
-      intel-opencl-icd=25.13.33276.16-1099~22.04 \
       intel-level-zero-gpu \
       level-zero \
       ocl-icd-libopencl1 && \
-    apt-mark hold intel-opencl-icd && \
     rm -rf /var/lib/apt/lists/*
 
 # Set python3.12 as default python3
