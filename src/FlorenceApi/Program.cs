@@ -30,6 +30,7 @@ builder.Services.AddHttpClient<FlorenceClient>((sp, http) =>
 });
 
 builder.Services.AddScoped<RecognitionHandler>();
+builder.Services.AddScoped<OptionsHandler>();
 
 builder.Services
     .AddAuthentication(ApiKeyAuthOptions.SchemeName)
@@ -73,9 +74,10 @@ builder.Services.Configure<Microsoft.AspNetCore.Http.Json.JsonOptions>(o =>
 });
 
 var maxImageBytes = builder.Configuration.GetValue("Florence:MaxImageBytes", 8 * 1024 * 1024);
+
 // JSON-with-base64 inflates payload by ~4/3; add headroom for the surrounding JSON envelope.
 builder.WebHost.ConfigureKestrel(o =>
-    o.Limits.MaxRequestBodySize = (long) (maxImageBytes * 4 / 3) + 128 * 1024);
+    o.Limits.MaxRequestBodySize = (long) (maxImageBytes * 4 / 3) + (128 * 1024));
 
 builder.Services.AddOpenApi("v1", options =>
 {

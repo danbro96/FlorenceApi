@@ -68,12 +68,12 @@
   <script>
     const apiBase = window.location.origin;
 
-    // Maps the dropdown value to a request endpoint + extra body fields.
+    // Maps the dropdown value to a request endpoint, extra body fields, and how to render the response.
     const taskMap = {
-      caption:               { path: '/captions',   extras: { detail: 'short' } },
-      ocr:                   { path: '/ocr',        extras: {} },
-      object_detection:      { path: '/detections', extras: { variant: 'od' } },
-      region_to_description: { path: '/detections', extras: { variant: 'dense' } },
+      caption:               { path: '/captions',   extras: { detail: 'short' },   render: (d) => d.caption },
+      ocr:                   { path: '/ocr',        extras: {},                    render: (d) => d.text },
+      object_detection:      { path: '/detections', extras: { variant: 'od' },     render: (d) => JSON.stringify(d, null, 2) },
+      region_to_description: { path: '/detections', extras: { variant: 'dense' },  render: (d) => JSON.stringify(d, null, 2) },
     };
 
     // Cache the selected image's base64 so we read the file once.
@@ -119,7 +119,7 @@
         return;
       }
 
-      const { path, extras } = taskMap[task];
+      const { path, extras, render } = taskMap[task];
       const body = { image: cachedBase64, media_type: cachedMediaType, ...extras };
 
       const headers = { 'Content-Type': 'application/json' };
@@ -142,12 +142,9 @@
         }
 
         const data = await response.json();
-        const result = data.result;
         resultDiv.classList.remove('error');
-        resultText.textContent = typeof result === 'string'
-          ? result
-          : JSON.stringify(result, null, 2);
-        resultMeta.textContent = `task=${data.task} · ${data.image.width}×${data.image.height} · ${data.elapsed_ms} ms`;
+        resultText.textContent = render(data);
+        resultMeta.textContent = `POST ${path}`;
         resultDiv.style.display = 'block';
       } catch (error) {
         resultDiv.classList.add('error');
