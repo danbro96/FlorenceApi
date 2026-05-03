@@ -1,17 +1,28 @@
+using FlorenceApi.Models;
 using FlorenceApi.Services;
+using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace FlorenceApi.Endpoints;
 
 public static class HealthEndpoint
 {
-    public static IEndpointConventionBuilder MapHealthEndpoint(this IEndpointRouteBuilder app)
-    {
-        return app.MapGet("/healthz", async (FlorenceClient client, CancellationToken ct) =>
-        {
-            var ok = await client.IsHealthyAsync(ct);
-            return ok
-                ? Results.Ok(new { status = "ok" })
-                : Results.Problem("Worker unhealthy.", statusCode: 503);
-        }).AllowAnonymous();
-    }
+    public static IEndpointConventionBuilder MapHealthEndpoint(this IEndpointRouteBuilder app) =>
+        app.MapGet("/healthz", async Task<Results<Ok<HealthResponse>, ProblemHttpResult>> (
+                FlorenceClient client,
+                CancellationToken ct) =>
+            {
+                var ok = await client.IsHealthyAsync(ct);
+                return ok
+                    ? TypedResults.Ok(new HealthResponse { Status = "ok" })
+                    : TypedResults.Problem(detail: "worker unhealthy", statusCode: 503);
+            })
+            .AllowAnonymous()
+            .WithTags("Meta")
+            .WithSummary("Health probe (cascades to the worker).")
+            .WithDescription(
+                """
+                Returns 200 with `{ "status": "ok" }` when both the .NET service and the inference
+                worker are reachable. Returns 503 when the worker is unreachable or unhealthy.
+                Anonymous — no API key required, suitable for the container healthcheck.
+                """);
 }

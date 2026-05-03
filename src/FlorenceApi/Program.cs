@@ -1,15 +1,20 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using FlorenceApi.Auth;
 using FlorenceApi.Endpoints;
+using FlorenceApi.Handlers;
 using FlorenceApi.Models;
 using FlorenceApi.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
+using Microsoft.OpenApi;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,6 +29,8 @@ builder.Services.AddHttpClient<FlorenceClient>((sp, http) =>
     http.BaseAddress = new Uri(opts.WorkerUrl);
     http.Timeout = TimeSpan.FromSeconds(opts.RequestTimeoutSeconds);
 });
+
+builder.Services.AddScoped<RecognitionHandler>();
 
 builder.Services
     .AddAuthentication(ApiKeyAuthOptions.SchemeName)
@@ -61,17 +68,56 @@ if (allowedOrigins.Length > 0)
 
 builder.Services.Configure<Microsoft.AspNetCore.Http.Json.JsonOptions>(o =>
 {
+    o.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower;
     o.SerializerOptions.PropertyNameCaseInsensitive = true;
-    o.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    o.SerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower));
 });
 
 var maxImageBytes = builder.Configuration.GetValue("Florence:MaxImageBytes", 8 * 1024 * 1024);
-builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(o =>
+// JSON-with-base64 inflates payload by ~4/3; add headroom for the surrounding JSON envelope.
+builder.WebHost.ConfigureKestrel(o =>
+    o.Limits.MaxRequestBodySize = (long)(maxImageBytes * 4 / 3) + 128 * 1024);
+
+builder.Services.AddOpenApi("v1", options =>
 {
-    o.MultipartBodyLengthLimit = maxImageBytes + 64 * 1024;
-    o.ValueLengthLimit = 4096;
+    options.AddDocumentTransformer((document, context, _) =>
+    {
+        document.Info = new()
+        {
+            Title = "FlorenceApi",
+            Version = "v1",
+            Description =
+                "Self-hosted image recognition API powered by Microsoft Florence-2 (OpenVINO/Intel Arc). " +
+                "All requests are JSON with the image base64-encoded in the body. " +
+                "Authenticate by sending your key in the `X-API-Key` header.",
+        };
+        document.Components ??= new();
+        document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
+        document.Components.SecuritySchemes["ApiKey"] = new OpenApiSecurityScheme
+        {
+            Type = SecuritySchemeType.ApiKey,
+            In = ParameterLocation.Header,
+            Name = ApiKeyAuthOptions.HeaderName,
+            Description = "API key. Send in the X-API-Key header.",
+        };
+        return Task.CompletedTask;
+    });
+    options.AddOperationTransformer((operation, context, _) =>
+    {
+        var endpointMetadata = context.Description.ActionDescriptor.EndpointMetadata;
+        var requiresAuth = endpointMetadata.OfType<IAuthorizeData>().Any()
+                        && !endpointMetadata.OfType<IAllowAnonymous>().Any();
+        if (requiresAuth)
+        {
+            operation.Security ??= new List<OpenApiSecurityRequirement>();
+            operation.Security.Add(new OpenApiSecurityRequirement
+            {
+                [new OpenApiSecuritySchemeReference("ApiKey", context.Document)] = new List<string>(),
+            });
+        }
+        return Task.CompletedTask;
+    });
 });
-builder.WebHost.ConfigureKestrel(o => o.Limits.MaxRequestBodySize = maxImageBytes + 128 * 1024);
 
 var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"];
 if (!string.IsNullOrWhiteSpace(otlpEndpoint))
@@ -107,8 +153,20 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();
 
+app.MapOpenApi("/openapi/{documentName}.json").AllowAnonymous();
+app.MapScalarApiReference("/scalar", o => o
+        .WithTitle("FlorenceApi")
+        .WithTheme(ScalarTheme.BluePlanet))
+    .AllowAnonymous();
+
 app.MapHealthEndpoint();
 app.MapOptionsEndpoint().RequireAuthorization();
-app.MapRecognizeEndpoint().RequireAuthorization();
+
+app.MapCaptions().RequireAuthorization();
+app.MapDetections().RequireAuthorization();
+app.MapGrounding().RequireAuthorization();
+app.MapOcr().RequireAuthorization();
+app.MapOcrRegions().RequireAuthorization();
+app.MapSegmentations().RequireAuthorization();
 
 app.Run();
