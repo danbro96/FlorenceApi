@@ -1,13 +1,9 @@
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.Threading.RateLimiting;
 using FlorenceApi.Auth;
 using FlorenceApi.Endpoints;
 using FlorenceApi.Handlers;
 using FlorenceApi.Models;
 using FlorenceApi.Services;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
 using OpenTelemetry.Logs;
@@ -15,6 +11,9 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Scalar.AspNetCore;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -54,7 +53,7 @@ builder.Services.AddRateLimiter(o =>
             TokensPerPeriod = permitsPerMinute,
             ReplenishmentPeriod = TimeSpan.FromMinutes(1),
             QueueLimit = 0,
-            AutoReplenishment = true
+            AutoReplenishment = true,
         });
     });
 });
@@ -76,7 +75,7 @@ builder.Services.Configure<Microsoft.AspNetCore.Http.Json.JsonOptions>(o =>
 var maxImageBytes = builder.Configuration.GetValue("Florence:MaxImageBytes", 8 * 1024 * 1024);
 // JSON-with-base64 inflates payload by ~4/3; add headroom for the surrounding JSON envelope.
 builder.WebHost.ConfigureKestrel(o =>
-    o.Limits.MaxRequestBodySize = (long)(maxImageBytes * 4 / 3) + 128 * 1024);
+    o.Limits.MaxRequestBodySize = (long) (maxImageBytes * 4 / 3) + 128 * 1024);
 
 builder.Services.AddOpenApi("v1", options =>
 {
@@ -115,6 +114,7 @@ builder.Services.AddOpenApi("v1", options =>
                 [new OpenApiSecuritySchemeReference("ApiKey", context.Document)] = new List<string>(),
             });
         }
+
         return Task.CompletedTask;
     });
 });

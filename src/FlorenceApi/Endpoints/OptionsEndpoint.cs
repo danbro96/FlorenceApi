@@ -1,17 +1,17 @@
-using System.Text.Json;
 using FlorenceApi.Models;
 using FlorenceApi.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
+using System.Text.Json;
 
 namespace FlorenceApi.Endpoints;
 
 public static class OptionsEndpoint
 {
-    const string CacheKey = "worker-options";
-    static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(5);
-    static readonly string[] SupportedFormats = ["jpeg", "png", "webp"];
+    private const string CacheKey = "worker-options";
+    private static readonly TimeSpan _cacheTtl = TimeSpan.FromMinutes(5);
+    private static readonly string[] _supportedFormats = ["jpeg", "png", "webp"];
 
     public static IEndpointConventionBuilder MapOptionsEndpoint(this IEndpointRouteBuilder app) =>
         app.MapGet("/options", async Task<Results<Ok<OptionsResponse>, ProblemHttpResult>> (
@@ -26,7 +26,7 @@ public static class OptionsEndpoint
                 {
                     raw = await cache.GetOrCreateAsync(CacheKey, async entry =>
                     {
-                        entry.AbsoluteExpirationRelativeToNow = CacheTtl;
+                        entry.AbsoluteExpirationRelativeToNow = _cacheTtl;
                         return await client.GetOptionsAsync(ct);
                     });
                 }
@@ -43,9 +43,9 @@ public static class OptionsEndpoint
                 {
                     using var doc = JsonDocument.Parse(raw);
                     var root = doc.RootElement;
-                    model = root.TryGetProperty("model", out var m) ? m.GetString() ?? "" : "";
-                    device = root.TryGetProperty("device", out var d) ? d.GetString() ?? "" : "";
-                    revision = root.TryGetProperty("revision", out var r) ? r.GetString() ?? "" : "";
+                    model = root.TryGetProperty("model", out var m) ? m.GetString() ?? string.Empty : string.Empty;
+                    device = root.TryGetProperty("device", out var d) ? d.GetString() ?? string.Empty : string.Empty;
+                    revision = root.TryGetProperty("revision", out var r) ? r.GetString() ?? string.Empty : string.Empty;
                 }
                 catch (JsonException)
                 {
@@ -58,7 +58,7 @@ public static class OptionsEndpoint
                     Revision = revision,
                     Device = device,
                     MaxImageBytes = florenceOptions.Value.MaxImageBytes,
-                    SupportedFormats = SupportedFormats,
+                    SupportedFormats = _supportedFormats,
                 });
             })
             .WithTags("Meta")

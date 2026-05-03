@@ -1,21 +1,22 @@
-using System.Diagnostics;
-using System.Text.Json;
 using FlorenceApi.Models;
+using FlorenceApi.Models.Enums;
 using FlorenceApi.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Extensions.Options;
+using System.Diagnostics;
+using System.Text.Json;
 
 namespace FlorenceApi.Handlers;
 
 public sealed class RecognitionHandler
 {
-    static readonly ActivitySource ActivitySource = new("FlorenceApi.Recognize");
-    const string DataUrlPrefix = "data:";
+    private const string DataUrlPrefix = "data:";
+    private static readonly ActivitySource _activitySource = new("FlorenceApi.Recognize");
 
-    readonly FlorenceClient _client;
-    readonly ILogger<RecognitionHandler> _log;
-    readonly int _maxImageBytes;
-    readonly JsonSerializerOptions _json;
+    private readonly FlorenceClient _client;
+    private readonly ILogger<RecognitionHandler> _log;
+    private readonly int _maxImageBytes;
+    private readonly JsonSerializerOptions _json;
 
     public RecognitionHandler(
         FlorenceClient client,
@@ -53,7 +54,7 @@ public sealed class RecognitionHandler
         SegmentAsync(SegmentationRequest req, CancellationToken ct) =>
         ExecuteAsync<SegmentationResponse>(req, "referring_expression_segmentation", req.Text, ct);
 
-    async Task<Results<Ok<TResponse>, ProblemHttpResult>>
+    private async Task<Results<Ok<TResponse>, ProblemHttpResult>>
         ExecuteAsync<TResponse>(
             ImageRequest req, string workerTask, string? textInput, CancellationToken ct)
         where TResponse : class
@@ -78,11 +79,9 @@ public sealed class RecognitionHandler
             return TypedResults.Problem(detail: "image is empty", statusCode: 400);
 
         if (decoded.Length > _maxImageBytes)
-            return TypedResults.Problem(
-                detail: $"image exceeds {_maxImageBytes} bytes",
-                statusCode: 413);
+            return TypedResults.Problem(detail: $"image exceeds {_maxImageBytes} bytes", statusCode: 413);
 
-        using var activity = ActivitySource.StartActivity("recognize");
+        using var activity = _activitySource.StartActivity("recognize");
         activity?.SetTag("task", workerTask);
         activity?.SetTag("image.bytes", decoded.Length);
         activity?.SetTag("text_input.length", textInput?.Length ?? 0);
@@ -126,7 +125,7 @@ public sealed class RecognitionHandler
         }
     }
 
-    static byte[] DecodeBase64(string input)
+    private static byte[] DecodeBase64(string input)
     {
         // Tolerate the optional data:image/...;base64, prefix some clients add.
         var span = input.AsSpan().Trim();
@@ -135,10 +134,11 @@ public sealed class RecognitionHandler
             var comma = span.IndexOf(',');
             if (comma >= 0) span = span[(comma + 1)..];
         }
+
         return Convert.FromBase64String(span.ToString());
     }
 
-    static string MapCaptionDetail(CaptionDetail detail) => detail switch
+    private static string MapCaptionDetail(CaptionDetail detail) => detail switch
     {
         CaptionDetail.Short => "caption",
         CaptionDetail.Detailed => "detailed_caption",
@@ -146,7 +146,7 @@ public sealed class RecognitionHandler
         _ => throw new ArgumentOutOfRangeException(nameof(detail), detail, null),
     };
 
-    static string MapDetectionVariant(DetectionVariant variant) => variant switch
+    private static string MapDetectionVariant(DetectionVariant variant) => variant switch
     {
         DetectionVariant.Od => "od",
         DetectionVariant.Dense => "dense_region_caption",

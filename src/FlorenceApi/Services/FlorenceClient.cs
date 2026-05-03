@@ -4,7 +4,7 @@ namespace FlorenceApi.Services;
 
 public sealed class FlorenceClient
 {
-    readonly HttpClient _http;
+    private readonly HttpClient _http;
 
     public FlorenceClient(HttpClient http) => _http = http;
 
