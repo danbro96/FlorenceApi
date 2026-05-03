@@ -20,24 +20,25 @@
     .result { margin-top: 1rem; padding: 1rem; background: #f9f9f9; border-left: 4px solid #0066cc; border-radius: 4px; display: none; }
     .result.error { border-left-color: #cc0000; background: #fff5f5; }
     .result h3 { color: #333; margin-bottom: 0.5rem; }
-    .result p { color: #666; word-break: break-word; white-space: pre-wrap; }
+    .result p { color: #666; word-break: break-word; white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9rem; }
+    .result .meta { margin-top: 0.5rem; color: #999; font-size: 0.8rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
     .loading { display: none; color: #0066cc; }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>🎨 Florence API Demo</h1>
-    
+
     <form id="form">
       <div class="form-group">
         <label for="image">Select Image:</label>
         <input type="file" id="image" accept="image/*" required>
       </div>
-      
+
       <div class="form-group">
         <img id="preview" class="preview">
       </div>
-      
+
       <div class="form-group">
         <label for="task">Task:</label>
         <select id="task">
@@ -47,88 +48,111 @@
           <option value="region_to_description">Region to Description</option>
         </select>
       </div>
-      
+
       <div class="form-group">
-        <label for="apiKey">API Key (optional):</label>
-        <input type="text" id="apiKey" placeholder="Leave blank for local testing">
+        <label for="apiKey">API Key:</label>
+        <input type="text" id="apiKey" placeholder="X-API-Key header value">
       </div>
-      
+
       <button type="submit">Analyze</button>
       <span class="loading">⏳ Processing...</span>
     </form>
-    
+
     <div id="result" class="result">
       <h3>Result:</h3>
       <p id="resultText"></p>
+      <div id="resultMeta" class="meta"></div>
     </div>
   </div>
 
   <script>
     const apiBase = window.location.origin;
-    
+
+    // Maps the dropdown value to a request endpoint + extra body fields.
+    const taskMap = {
+      caption:               { path: '/captions',   extras: { detail: 'short' } },
+      ocr:                   { path: '/ocr',        extras: {} },
+      object_detection:      { path: '/detections', extras: { variant: 'od' } },
+      region_to_description: { path: '/detections', extras: { variant: 'dense' } },
+    };
+
+    // Cache the selected image's base64 so we read the file once.
+    let cachedBase64 = null;
+    let cachedMediaType = null;
+
     document.getElementById('image').addEventListener('change', (e) => {
       const file = e.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-          document.getElementById('preview').src = ev.target.result;
-          document.getElementById('preview').style.display = 'block';
-        };
-        reader.readAsDataURL(file);
-      }
+      cachedBase64 = null;
+      cachedMediaType = null;
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const dataUrl = ev.target.result;
+        document.getElementById('preview').src = dataUrl;
+        document.getElementById('preview').style.display = 'block';
+        // dataUrl is "data:<media-type>;base64,<payload>" — split it.
+        const comma = dataUrl.indexOf(',');
+        const header = dataUrl.slice(5, comma); // strip "data:"
+        cachedMediaType = header.replace(/;base64$/, '');
+        cachedBase64 = dataUrl.slice(comma + 1);
+      };
+      reader.readAsDataURL(file);
     });
-    
+
     document.getElementById('form').addEventListener('submit', async (e) => {
       e.preventDefault();
-      
-      const image = document.getElementById('image').files[0];
+
       const task = document.getElementById('task').value;
       const apiKey = document.getElementById('apiKey').value;
       const resultDiv = document.getElementById('result');
       const resultText = document.getElementById('resultText');
+      const resultMeta = document.getElementById('resultMeta');
       const button = e.target.querySelector('button');
       const loading = e.target.querySelector('.loading');
-      
-      if (!image) {
+
+      if (!cachedBase64) {
         resultDiv.classList.add('error');
         resultText.textContent = 'Please select an image';
+        resultMeta.textContent = '';
         resultDiv.style.display = 'block';
         return;
       }
-      
+
+      const { path, extras } = taskMap[task];
+      const body = { image: cachedBase64, media_type: cachedMediaType, ...extras };
+
+      const headers = { 'Content-Type': 'application/json' };
+      if (apiKey) headers['X-API-Key'] = apiKey;
+
       button.disabled = true;
       loading.style.display = 'inline';
       resultDiv.style.display = 'none';
-      
+
       try {
-        const formData = new FormData();
-        formData.append('image', image);
-        formData.append('task', task);
-        
-        const headers = {};
-        if (apiKey) {
-          headers['X-API-Key'] = apiKey;
-        }
-        
-        const response = await fetch(`${apiBase}/recognize`, {
+        const response = await fetch(`${apiBase}${path}`, {
           method: 'POST',
-          body: formData,
-          headers
+          headers,
+          body: JSON.stringify(body),
         });
-        
+
         if (!response.ok) {
           const errorText = await response.text();
           throw new Error(`${response.status}: ${errorText}`);
         }
-        
+
         const data = await response.json();
-        
+        const result = data.result;
         resultDiv.classList.remove('error');
-        resultText.textContent = data.result || JSON.stringify(data, null, 2);
+        resultText.textContent = typeof result === 'string'
+          ? result
+          : JSON.stringify(result, null, 2);
+        resultMeta.textContent = `task=${data.task} · ${data.image.width}×${data.image.height} · ${data.elapsed_ms} ms`;
         resultDiv.style.display = 'block';
       } catch (error) {
         resultDiv.classList.add('error');
         resultText.textContent = `Error: ${error.message}`;
+        resultMeta.textContent = '';
         resultDiv.style.display = 'block';
       } finally {
         button.disabled = false;
