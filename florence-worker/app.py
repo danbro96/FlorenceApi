@@ -1,6 +1,7 @@
 import asyncio
 import io
 import logging
+import math
 import os
 import time
 from contextlib import asynccontextmanager
@@ -127,21 +128,88 @@ def options():
     }
 
 
+def _loc_token_ids(tokenizer) -> set[int]:
+    cached = state.get("loc_token_ids")
+    if cached is not None:
+        return cached
+    ids = {tid for tok, tid in tokenizer.get_added_vocab().items() if tok.startswith("<loc_")}
+    state["loc_token_ids"] = ids
+    return ids
+
+
+def _per_region_confidence(generated_ids, transition_scores, tokenizer) -> list[float]:
+    """Mean per-token probability of each region's label tokens.
+
+    Florence-2 emits OCR_WITH_REGION as `label <loc_*>x8 label <loc_*>x8 ...`.
+    We average exp(log_prob) across the text tokens preceding each 8-token
+    location burst. Location and special tokens are excluded from the mean.
+    """
+    loc_ids = _loc_token_ids(tokenizer)
+    special_ids = set(tokenizer.all_special_ids)
+    # transition_scores is aligned to the generated tokens (decoder_start excluded).
+    score_list = transition_scores.tolist()
+    token_list = generated_ids.tolist()[-len(score_list):]
+
+    confidences: list[float] = []
+    label_log_probs: list[float] = []
+    loc_count = 0
+    for token_id, log_prob in zip(token_list, score_list):
+        if token_id in loc_ids:
+            loc_count += 1
+            if loc_count == 8:
+                if label_log_probs:
+                    confidences.append(math.exp(sum(label_log_probs) / len(label_log_probs)))
+                else:
+                    confidences.append(0.0)
+                label_log_probs = []
+                loc_count = 0
+            continue
+        if token_id in special_ids:
+            continue
+        if loc_count == 0:
+            label_log_probs.append(log_prob)
+    return confidences
+
+
 def _run_inference(prompt: str, task_token: str, img: Image.Image):
     processor = state["processor"]
     model = state["model"]
     inputs = processor(text=prompt, images=img, return_tensors="pt")
-    generated_ids = model.generate(
+    out = model.generate(
         input_ids=inputs["input_ids"],
         pixel_values=inputs["pixel_values"],
         max_new_tokens=1024,
         num_beams=3,
         do_sample=False,
+        output_scores=True,
+        return_dict_in_generate=True,
     )
-    generated_text = processor.batch_decode(generated_ids, skip_special_tokens=False)[0]
-    return processor.post_process_generation(
+    sequences = out.sequences
+    generated_text = processor.batch_decode(sequences, skip_special_tokens=False)[0]
+    parsed = processor.post_process_generation(
         generated_text, task=task_token, image_size=(img.width, img.height)
     )
+
+    if task_token == "<OCR_WITH_REGION>":
+        # compute_transition_scores handles beam search via beam_indices.
+        transition_scores = model.language_model.compute_transition_scores(
+            sequences, out.scores, out.beam_indices, normalize_logits=True
+        )
+        confidence = _per_region_confidence(sequences[0], transition_scores[0], processor.tokenizer)
+        result = parsed.get(task_token, parsed)
+        if isinstance(result, dict):
+            # Pad/truncate so confidence is the same length as quad_boxes; the OCR parser
+            # may emit fewer regions than the raw token stream produced 8-loc bursts for
+            # (truncated output, malformed regions). Pad with 0.0 for safety.
+            n = len(result.get("quad_boxes", []))
+            if len(confidence) < n:
+                confidence = confidence + [0.0] * (n - len(confidence))
+            elif len(confidence) > n:
+                confidence = confidence[:n]
+            result["confidence"] = confidence
+        return parsed
+
+    return parsed
 
 
 @app.post("/recognize")

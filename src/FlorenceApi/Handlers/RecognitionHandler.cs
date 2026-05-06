@@ -134,7 +134,7 @@ public sealed class RecognitionHandler
         try
         {
             var json = await InvokeWorkerAsync(bytes, req.MediaType, workerTask, textInput: null, activity, ct);
-            return TypedResults.Ok(ExtractResult<OcrRegionsResult>(json));
+            return TypedResults.Ok(ProjectOcrRegions(json));
         }
         catch (Exception ex) when (TryMapWorkerException(ex, workerTask, activity, ct) is { } problem)
         {
@@ -212,6 +212,58 @@ public sealed class RecognitionHandler
         return env.Result;
     }
 
+    private OcrRegionsResult ProjectOcrRegions(string json)
+    {
+        var env = JsonSerializer.Deserialize<WorkerEnvelope<WorkerOcrRegionsRaw>>(json, _json)
+            ?? throw new JsonException("worker returned null");
+        if (env.Result is null)
+            throw new JsonException("worker response missing 'result'");
+        if (env.Image is null)
+            throw new JsonException("worker response missing 'image'");
+
+        var raw = env.Result;
+        var quads = raw.QuadBoxes;
+        var labels = raw.Labels;
+        var confidence = raw.Confidence;
+
+        if (labels.Length != quads.Length)
+            throw new JsonException("worker returned mismatched quad_boxes/labels lengths");
+
+        var regions = new List<OcrRegion>(quads.Length);
+        for (int i = 0; i < quads.Length; i++)
+        {
+            var q = quads[i];
+            if (q.Length != 8)
+                throw new JsonException($"quad_boxes[{i}] must have 8 elements (got {q.Length})");
+
+            regions.Add(new OcrRegion
+            {
+                Text = labels[i] ?? string.Empty,
+                Quad = q,
+                Box = ComputeBoundingBox(q),
+                Rotation = ComputeRotationDegrees(q),
+                Confidence = confidence is not null && i < confidence.Length ? confidence[i] : 0.0,
+            });
+        }
+
+        // Reading-order sort: bucket by row using a y-tolerance proportional to image height,
+        // then sort left-to-right within each row.
+        var bin = Math.Max(env.Image.Height * 0.015, 1.0);
+        regions.Sort((a, b) =>
+        {
+            var rowA = (long) Math.Round(((a.Box.YMin + a.Box.YMax) / 2) / bin);
+            var rowB = (long) Math.Round(((b.Box.YMin + b.Box.YMax) / 2) / bin);
+            var cmp = rowA.CompareTo(rowB);
+            return cmp != 0 ? cmp : a.Box.XMin.CompareTo(b.Box.XMin);
+        });
+
+        return new OcrRegionsResult
+        {
+            Regions = regions,
+            Image = new ImageSize { Width = env.Image.Width, Height = env.Image.Height },
+        };
+    }
+
     private ProblemHttpResult? TryMapWorkerException(
         Exception ex, WorkerTask workerTask, Activity? activity, CancellationToken ct)
     {
@@ -260,5 +312,28 @@ public sealed class RecognitionHandler
         }
 
         return Convert.FromBase64String(span.ToString());
+    }
+
+    private static BoundingBox ComputeBoundingBox(double[] quad)
+    {
+        double xMin = quad[0], xMax = quad[0], yMin = quad[1], yMax = quad[1];
+        for (int i = 2; i < 8; i += 2)
+        {
+            var x = quad[i];
+            var y = quad[i + 1];
+            if (x < xMin) xMin = x; else if (x > xMax) xMax = x;
+            if (y < yMin) yMin = y; else if (y > yMax) yMax = y;
+        }
+
+        return new BoundingBox { XMin = xMin, YMin = yMin, XMax = xMax, YMax = yMax };
+    }
+
+    private static double ComputeRotationDegrees(double[] quad)
+    {
+        // Top edge: TL (x1,y1) → TR (x2,y2). Image y increases downward, so atan2 of the
+        // raw delta gives the angle the top edge is tilted clockwise from horizontal.
+        var dx = quad[2] - quad[0];
+        var dy = quad[3] - quad[1];
+        return Math.Atan2(dy, dx) * (180.0 / Math.PI);
     }
 }

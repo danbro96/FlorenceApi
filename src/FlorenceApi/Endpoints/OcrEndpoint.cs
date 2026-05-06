@@ -28,15 +28,23 @@ public static class OcrEndpoint
                 RecognitionHandler h,
                 CancellationToken ct) => h.OcrRegionsAsync(req, ct))
             .WithTags("OCR")
-            .WithSummary("Extract text from an image with per-block region polygons.")
+            .WithSummary("Extract text from an image with per-region polygons, bounding boxes, rotation, and confidence.")
             .WithDescription(
                 """
-                Returns a parallel list of `quad_boxes` (8-point polygons:
-                `[x1, y1, x2, y2, x3, y3, x4, y4]`, NOT axis-aligned bounding boxes) and `labels`
-                (the recognized text per region).
+                Returns a list of recognized text regions plus the image dimensions the regions are
+                expressed in. Regions are sorted top-to-bottom, left-to-right.
 
-                Quad boxes are the native shape for rotated/curved text in Florence-2 OCR; convert to
-                axis-aligned boxes client-side if your renderer requires that.
+                Each region carries:
+
+                - `text` — recognized text.
+                - `quad` — 8-element polygon `[x1,y1,x2,y2,x3,y3,x4,y4]`, ordered TL, TR, BR, BL.
+                  Native shape from Florence-2; preserved verbatim for clients that need rotated polygons.
+                - `box` — axis-aligned bounding box derived from `quad` (server-side).
+                - `rotation` — degrees, derived from the top edge of `quad` via `atan2(y2-y1, x2-x1)`.
+                  Range `(-180, 180]`; ~0 for upright text, ~±180 for upside-down. Florence-2 does not
+                  expose a rotation field natively — this is computed from the quad geometry.
+                - `confidence` — mean per-token probability of the region's label tokens, in `[0, 1]`.
+                  Useful as a relative ranking signal; not a calibrated probability.
 
                 Maps to Florence-2 task `<OCR_WITH_REGION>`.
                 """);
