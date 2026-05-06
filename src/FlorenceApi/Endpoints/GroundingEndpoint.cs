@@ -22,5 +22,11 @@ public static class GroundingEndpoint
                 Example: `text = "a cat on a sofa"` returns boxes for "a cat" and "a sofa".
 
                 Maps to Florence-2 task `<CAPTION_TO_PHRASE_GROUNDING>`.
-                """);
+                """)
+            .Accepts<GroundingRequest>("application/json")
+            .Produces<DetectionResult>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status413PayloadTooLarge)
+            .ProducesProblem(StatusCodes.Status502BadGateway)
+            .ProducesProblem(StatusCodes.Status504GatewayTimeout);
 }

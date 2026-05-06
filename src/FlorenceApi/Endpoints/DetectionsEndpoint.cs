@@ -23,5 +23,11 @@ public static class DetectionsEndpoint
                 - `proposal` — class-agnostic region proposals with empty labels.
 
                 Maps to Florence-2 tasks `<OD>`, `<DENSE_REGION_CAPTION>`, `<REGION_PROPOSAL>`.
-                """);
+                """)
+            .Accepts<DetectionRequest>("application/json")
+            .Produces<DetectionResult>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status413PayloadTooLarge)
+            .ProducesProblem(StatusCodes.Status502BadGateway)
+            .ProducesProblem(StatusCodes.Status504GatewayTimeout);
 }

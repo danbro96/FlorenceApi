@@ -24,5 +24,7 @@ public static class HealthEndpoint
                 Returns 200 with `{ "status": "ok" }` when both the .NET service and the inference
                 worker are reachable. Returns 503 when the worker is unreachable or unhealthy.
                 Anonymous — no API key required, suitable for the container healthcheck.
-                """);
+                """)
+            .Produces<HealthResponse>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status503ServiceUnavailable);
 }

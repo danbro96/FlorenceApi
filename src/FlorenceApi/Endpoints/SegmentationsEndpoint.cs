@@ -23,5 +23,11 @@ public static class SegmentationsEndpoint
                 disjoint polygons (e.g. an object split by occlusion).
 
                 Maps to Florence-2 task `<REFERRING_EXPRESSION_SEGMENTATION>`.
-                """);
+                """)
+            .Accepts<SegmentationRequest>("application/json")
+            .Produces<SegmentationResult>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status413PayloadTooLarge)
+            .ProducesProblem(StatusCodes.Status502BadGateway)
+            .ProducesProblem(StatusCodes.Status504GatewayTimeout);
 }

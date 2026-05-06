@@ -1,4 +1,5 @@
 using FlorenceApi.Handlers;
+using FlorenceApi.Models;
 
 namespace FlorenceApi.Endpoints;
 
@@ -16,5 +17,8 @@ public static class OptionsEndpoint
                 in use (`GPU`, `GPU.0`, `CPU`, …), the max image upload size, and the accepted image
                 formats. The list of recognition tasks lives in the OpenAPI spec at `/openapi/v1.json`
                 — fetch that for client codegen.
-                """);
+                """)
+            .Produces<OptionsResponse>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status502BadGateway)
+            .ProducesProblem(StatusCodes.Status503ServiceUnavailable);
 }

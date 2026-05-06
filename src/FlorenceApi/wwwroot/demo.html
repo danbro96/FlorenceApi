@@ -17,11 +17,15 @@
     button:hover { background: #0052a3; }
     button:disabled { background: #ccc; cursor: not-allowed; }
     .preview { margin: 1rem 0; max-width: 100%; max-height: 300px; border-radius: 4px; display: none; }
+    canvas.preview { height: auto; }
     .result { margin-top: 1rem; padding: 1rem; background: #f9f9f9; border-left: 4px solid #0066cc; border-radius: 4px; display: none; }
     .result.error { border-left-color: #cc0000; background: #fff5f5; }
     .result h3 { color: #333; margin-bottom: 0.5rem; }
     .result p { color: #666; word-break: break-word; white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9rem; }
     .result .meta { margin-top: 0.5rem; color: #999; font-size: 0.8rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .legend { display: none; margin: 0.5rem 0 1rem; font-size: 0.8rem; color: #666; }
+    .legend .swatch { display: inline-block; width: 0.75rem; height: 0.75rem; margin: 0 0.25rem 0 0.75rem; vertical-align: middle; border-radius: 2px; }
+    .legend .swatch:first-child { margin-left: 0; }
     .loading { display: none; color: #0066cc; }
   </style>
 </head>
@@ -37,6 +41,13 @@
 
       <div class="form-group">
         <img id="preview" class="preview">
+        <canvas id="overlay" class="preview"></canvas>
+        <div id="legend" class="legend">
+          Confidence:
+          <span class="swatch" style="background:#22aa66"></span>high (≥85%)
+          <span class="swatch" style="background:#d4a017"></span>medium (≥60%)
+          <span class="swatch" style="background:#cc4422"></span>low
+        </div>
       </div>
 
       <div class="form-group">
@@ -44,6 +55,7 @@
         <select id="task">
           <option value="caption">Caption</option>
           <option value="ocr">OCR</option>
+          <option value="ocr_regions">OCR with Regions</option>
           <option value="object_detection">Object Detection</option>
           <option value="region_to_description">Region to Description</option>
         </select>
@@ -70,11 +82,96 @@
 
     // Maps the dropdown value to a request endpoint, extra body fields, and how to render the response.
     const taskMap = {
-      caption:               { path: '/captions',   extras: { detail: 'short' },   render: (d) => d.caption },
-      ocr:                   { path: '/ocr',        extras: {},                    render: (d) => d.text },
-      object_detection:      { path: '/detections', extras: { variant: 'od' },     render: (d) => JSON.stringify(d, null, 2) },
-      region_to_description: { path: '/detections', extras: { variant: 'dense' },  render: (d) => JSON.stringify(d, null, 2) },
+      caption:               { path: '/captions',    extras: { detail: 'short' },   render: (d) => d.caption },
+      ocr:                   { path: '/ocr',         extras: {},                    render: (d) => d.text },
+      ocr_regions:           { path: '/ocr/regions', extras: {},                    render: renderOcrRegions },
+      object_detection:      { path: '/detections',  extras: { variant: 'od' },     render: (d) => JSON.stringify(d, null, 2) },
+      region_to_description: { path: '/detections',  extras: { variant: 'dense' },  render: (d) => JSON.stringify(d, null, 2) },
     };
+
+    // Hide the regions overlay/legend when switching to a non-regions task or picking a new file.
+    function resetOverlay() {
+      document.getElementById('overlay').style.display = 'none';
+      document.getElementById('legend').style.display = 'none';
+      const preview = document.getElementById('preview');
+      if (preview.src) preview.style.display = 'block';
+    }
+
+    function confidenceColor(conf) {
+      if (conf >= 0.85) return '#22aa66';
+      if (conf >= 0.60) return '#d4a017';
+      return '#cc4422';
+    }
+
+    function renderOcrRegions(data) {
+      const regions = data.regions ?? [];
+      const img = document.getElementById('preview');
+      const canvas = document.getElementById('overlay');
+      const ctx = canvas.getContext('2d');
+
+      // Draw at the image's natural pixel size; CSS scales the canvas to fit. The
+      // server's quads are in image-pixel coordinates, so no rescaling is needed.
+      const w = data.image?.width  ?? img.naturalWidth;
+      const h = data.image?.height ?? img.naturalHeight;
+      canvas.width = w;
+      canvas.height = h;
+
+      ctx.drawImage(img, 0, 0, w, h);
+
+      // Quad ordering is TL,TR,BR,BL. Stroke width scales with image size so it
+      // stays readable on phone-camera resolutions without overpowering thumbnails.
+      const stroke = Math.max(2, Math.round(Math.min(w, h) / 400));
+      const fontSize = Math.max(12, Math.round(Math.min(w, h) / 60));
+      ctx.lineWidth = stroke;
+      ctx.font = `${fontSize}px ui-monospace, Menlo, monospace`;
+      ctx.textBaseline = 'top';
+
+      for (const r of regions) {
+        const q = r.quad ?? [];
+        if (q.length !== 8) continue;
+        const color = confidenceColor(r.confidence ?? 0);
+
+        ctx.strokeStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(q[0], q[1]);
+        ctx.lineTo(q[2], q[3]);
+        ctx.lineTo(q[4], q[5]);
+        ctx.lineTo(q[6], q[7]);
+        ctx.closePath();
+        ctx.stroke();
+
+        // Confidence chip at top-left of the bounding box.
+        const box = r.box ?? { x_min: q[0], y_min: q[1] };
+        const label = `${Math.round((r.confidence ?? 0) * 100)}%`;
+        const padding = stroke;
+        const textWidth = ctx.measureText(label).width;
+        ctx.fillStyle = color;
+        ctx.fillRect(box.x_min, box.y_min, textWidth + (padding * 2), fontSize + padding);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(label, box.x_min + padding, box.y_min + (padding / 2));
+      }
+
+      // Swap preview img for the annotated canvas; show the legend.
+      img.style.display = 'none';
+      canvas.style.display = 'block';
+      document.getElementById('legend').style.display = 'block';
+
+      // Summary text + per-region listing in the result box.
+      if (regions.length === 0) {
+        return `0 regions • image ${w}×${h}`;
+      }
+      const sorted = regions.map(r => r.rotation ?? 0).slice().sort((a, b) => a - b);
+      const median = sorted.length % 2
+        ? sorted[(sorted.length - 1) / 2]
+        : (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2;
+      const header = `${regions.length} regions • image ${w}×${h} • median rotation ${median.toFixed(1)}°\n`;
+      const rows = regions.map(r => {
+        const conf = ((r.confidence ?? 0) * 100).toFixed(0).padStart(3);
+        const rot = (r.rotation ?? 0).toFixed(1).padStart(6);
+        return `[conf ${conf}% • rot ${rot}°] ${r.text ?? ''}`;
+      });
+      return header + '\n' + rows.join('\n');
+    }
 
     // Cache the selected image's base64 so we read the file once.
     let cachedBase64 = null;
@@ -84,6 +181,7 @@
       const file = e.target.files[0];
       cachedBase64 = null;
       cachedMediaType = null;
+      resetOverlay();
       if (!file) return;
 
       const reader = new FileReader();
@@ -99,6 +197,8 @@
       };
       reader.readAsDataURL(file);
     });
+
+    document.getElementById('task').addEventListener('change', resetOverlay);
 
     document.getElementById('form').addEventListener('submit', async (e) => {
       e.preventDefault();

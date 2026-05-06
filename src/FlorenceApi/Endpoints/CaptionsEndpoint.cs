@@ -23,5 +23,11 @@ public static class CaptionsEndpoint
                 - `more_detailed` — a multi-sentence caption with fine-grained description.
 
                 Maps to Florence-2 tasks `<CAPTION>`, `<DETAILED_CAPTION>`, `<MORE_DETAILED_CAPTION>`.
-                """);
+                """)
+            .Accepts<CaptionRequest>("application/json")
+            .Produces<CaptionResult>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status413PayloadTooLarge)
+            .ProducesProblem(StatusCodes.Status502BadGateway)
+            .ProducesProblem(StatusCodes.Status504GatewayTimeout);
 }

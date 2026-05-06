@@ -20,7 +20,13 @@ public static class OcrEndpoint
                 Use `/ocr/regions` if you need per-text-block bounding boxes.
 
                 Maps to Florence-2 task `<OCR>`.
-                """);
+                """)
+            .Accepts<OcrRequest>("application/json")
+            .Produces<OcrResult>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status413PayloadTooLarge)
+            .ProducesProblem(StatusCodes.Status502BadGateway)
+            .ProducesProblem(StatusCodes.Status504GatewayTimeout);
 
     public static IEndpointConventionBuilder MapOcrRegions(this IEndpointRouteBuilder app) =>
         app.MapPost("/ocr/regions", (
@@ -47,5 +53,11 @@ public static class OcrEndpoint
                   Useful as a relative ranking signal; not a calibrated probability.
 
                 Maps to Florence-2 task `<OCR_WITH_REGION>`.
-                """);
+                """)
+            .Accepts<OcrRequest>("application/json")
+            .Produces<OcrRegionsResult>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status413PayloadTooLarge)
+            .ProducesProblem(StatusCodes.Status502BadGateway)
+            .ProducesProblem(StatusCodes.Status504GatewayTimeout);
 }
