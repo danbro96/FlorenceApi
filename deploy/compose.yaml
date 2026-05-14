@@ -13,6 +13,7 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:5080/api/default
       OTEL_EXPORTER_OTLP_HEADERS: "Authorization=Basic TOKENHERE"
       OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_METRIC_EXPORT_INTERVAL: "300000"
       OTEL_RESOURCE_ATTRIBUTES: deployment.environment=prod,host.name=medelynas
     ports:
       - "${HOST_PORT:-40380}:8080"

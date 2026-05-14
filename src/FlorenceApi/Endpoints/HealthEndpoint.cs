@@ -17,6 +17,7 @@ public static class HealthEndpoint
                     : TypedResults.Problem(detail: "worker unhealthy", statusCode: 503);
             })
             .AllowAnonymous()
+            .DisableHttpMetrics()
             .WithTags("Meta")
             .WithSummary("Health probe (cascades to the worker).")
             .WithDescription(
