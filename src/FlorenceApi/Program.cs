@@ -32,6 +32,9 @@ builder.Services.AddHttpClient<FlorenceClient>((sp, http) =>
 builder.Services.AddScoped<RecognitionHandler>();
 builder.Services.AddScoped<OptionsHandler>();
 
+// Liveness (/livez) + readiness (/readyz, pings the inference worker) probes.
+builder.Services.AddAppHealthChecks();
+
 builder.Services
     .AddAuthentication(ApiKeyAuthOptions.SchemeName)
     .AddScheme<ApiKeyAuthOptions, ApiKeyAuthenticationHandler>(ApiKeyAuthOptions.SchemeName, opts =>
@@ -161,7 +164,7 @@ app.MapScalarApiReference("/scalar", o => o
         .WithTheme(ScalarTheme.BluePlanet))
     .AllowAnonymous();
 
-app.MapHealthEndpoint();
+app.MapAppHealthChecks(app.Environment);
 app.MapOptionsEndpoint().RequireAuthorization();
 
 app.MapCaptions().RequireAuthorization();

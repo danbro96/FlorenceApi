@@ -43,7 +43,7 @@ public sealed class FlorenceClient
         {
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(3));
-            using var resp = await _http.GetAsync("/healthz", cts.Token);
+            using var resp = await _http.GetAsync("/readyz", cts.Token);
             return resp.IsSuccessStatusCode;
         }
         catch

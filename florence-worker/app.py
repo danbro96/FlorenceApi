@@ -98,20 +98,42 @@ def _load() -> tuple[OVFlorence2Model, Any, str]:
 state: dict[str, Any] = {}
 
 
+async def _load_in_background() -> None:
+    # _load() is heavy (first-boot conversion can take minutes); run it in a worker thread so
+    # the event loop stays free and /livez answers immediately. On failure /readyz stays 503.
+    try:
+        model, processor, device = await asyncio.to_thread(_load)
+        state["model"], state["processor"], state["device"] = model, processor, device
+        LOG.info("Florence-2 ready on %s.", device)
+    except Exception:
+        LOG.exception("Florence-2 model load failed; /readyz will stay 503.")
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    state["model"], state["processor"], state["device"] = _load()
-    LOG.info("Florence-2 ready on %s.", state["device"])
-    yield
+    # Load off the startup critical path: the process binds and serves /livez right away while
+    # the model loads in the background. /readyz flips to 200 once the load completes.
+    load_task = asyncio.create_task(_load_in_background())
+    try:
+        yield
+    finally:
+        load_task.cancel()
 
 
 app = FastAPI(lifespan=lifespan)
 
 
-@app.get("/healthz")
-def healthz():
+@app.get("/livez")
+def livez():
+    # Liveness: the process is up. Never touches the model, so it stays green during loading.
+    return {"status": "ok"}
+
+
+@app.get("/readyz")
+def readyz():
+    # Readiness: the model has finished loading and the worker can serve inference.
     if "model" not in state:
-        raise HTTPException(503, "model not loaded")
+        raise HTTPException(503, "model loading")
     return {"status": "ok", "device": state["device"], "model": MODEL_ID}
 
 
@@ -239,7 +261,7 @@ async def recognize(
 
     started = time.perf_counter()
     async with INFERENCE_LOCK:
-        # Inference is multi-second blocking work; offload from the event loop so /healthz
+        # Inference is multi-second blocking work; offload from the event loop so /livez
         # and other requests stay responsive while one inference is running.
         parsed = await asyncio.to_thread(_run_inference, prompt, task_token, img)
     elapsed_ms = int((time.perf_counter() - started) * 1000)
