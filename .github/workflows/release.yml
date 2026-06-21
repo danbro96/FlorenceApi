@@ -1,4 +1,4 @@
-name: release
+name: Release
 
 on:
   push:
@@ -6,16 +6,24 @@ on:
     tags: ["v*"]
   workflow_dispatch:
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
-  ci:
-    uses: ./.github/workflows/ci.yml
+  tests:
+    uses: ./.github/workflows/tests.yml
+    with:
+      run_integration: true
 
   build-push:
-    needs: ci
+    name: Build & push ${{ matrix.image }}
+    needs: tests
     runs-on: ubuntu-latest
     permissions:
       contents: read
     strategy:
+      fail-fast: false
       matrix:
         include:
           - image: danbro96/florence-api
@@ -40,6 +48,8 @@ jobs:
             type=sha,prefix=sha-,format=short
             type=ref,event=branch
             type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
       - uses: docker/build-push-action@v7
         with:
           context: .

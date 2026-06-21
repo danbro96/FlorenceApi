@@ -1,28 +1,13 @@
-name: ci
+name: CI
 
-on:
-  pull_request:
-  push:
-    branches-ignore:
-      - main
-  workflow_call:
+on: pull_request
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  backend-build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: '10.0.x'
-      - run: dotnet restore src/FlorenceApi/FlorenceApi.csproj
-      - run: dotnet build src/FlorenceApi/FlorenceApi.csproj --no-restore -c Release
-
-  worker-lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
-        with:
-          python-version: '3.12'
-      - run: python -m py_compile florence-worker/app.py florence-worker/ov_florence2_helper.py
+  tests:
+    uses: ./.github/workflows/tests.yml
+    with:
+      run_integration: ${{ contains(github.event.pull_request.labels.*.name, 'integration') }}

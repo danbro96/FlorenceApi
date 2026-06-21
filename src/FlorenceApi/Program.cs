@@ -175,3 +175,6 @@ app.MapOcrRegions().RequireAuthorization();
 app.MapSegmentations().RequireAuthorization();
 
 app.Run();
+
+// Exposed for WebApplicationFactory<Program> in the integration tests.
+public partial class Program;

@@ -7,6 +7,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Expose internal pure helpers (WorkerTask wire vocabulary) for unit testing. -->
+    <InternalsVisibleTo Include="FlorenceApi.UnitTests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.7" />
     <PackageReference Include="Scalar.AspNetCore" Version="2.14.9" />
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.15.3" />

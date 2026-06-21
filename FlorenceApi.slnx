@@ -2,4 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/FlorenceApi/FlorenceApi.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FlorenceApi.UnitTests/FlorenceApi.UnitTests.csproj" />
+  </Folder>
 </Solution>
