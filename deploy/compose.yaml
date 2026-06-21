@@ -8,7 +8,7 @@ services:
       Florence__RequestTimeoutSeconds: ${REQUEST_TIMEOUT:-60}
       Auth__ApiKeys__0__Key: ${FLORENCE_API_KEY:?required}
       Auth__ApiKeys__0__Name: ${FLORENCE_API_KEY_NAME:-prod}
-      Auth__AllowedOrigins__0: ${ALLOWED_ORIGIN:-https://vision.lupira.com}
+      Auth__AllowedOrigins__0: ${ALLOWED_ORIGIN:-https://vision-api.lupira.com}
       RateLimit__RequestsPerMinute: ${RATE_LIMIT:-60}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:5080/api/default
       OTEL_EXPORTER_OTLP_HEADERS: "Authorization=Basic TOKENHERE"
