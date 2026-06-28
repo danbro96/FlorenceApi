@@ -1,6 +1,10 @@
 # Reference Compose for FlorenceApi — florence-api (.NET frontend) + florence-worker (GPU inference sidecar).
 # Every host, port, GID, and URL below is an overridable ${VAR:-default} sample from the maintainer's
 # deployment — override them for your environment (see deploy/.env.example). Values marked :?required must be set.
+#
+# The .NET frontend serves REST (public, via the Cloudflare Tunnel) AND an agent MCP surface at /mcp
+# (LAN/WireGuard-only). The Cloudflare Tunnel ingress MUST NOT route /mcp — the app 404s any /mcp
+# request carrying Cloudflare edge headers as a backstop (UseMcpLanOnly).
 services:
   florence-api:
     image: danbro96/florence-api:${IMAGE_TAG:-latest}

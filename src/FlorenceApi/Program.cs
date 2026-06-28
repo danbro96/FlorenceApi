@@ -32,6 +32,15 @@ builder.Services.AddHttpClient<FlorenceClient>((sp, http) =>
 builder.Services.AddScoped<RecognitionHandler>();
 builder.Services.AddScoped<OptionsHandler>();
 
+// MCP agent surface. The [McpServerToolType] tools in this assembly call the same
+// RecognitionHandler as the REST endpoints (no second source of truth). Mounted at /mcp over
+// Streamable HTTP, secured by the same X-API-Key scheme (see MapMcp below), and kept
+// LAN/WireGuard-only — never published through the Cloudflare Tunnel.
+builder.Services
+    .AddMcpServer()
+    .WithHttpTransport()
+    .WithToolsFromAssembly();
+
 // Liveness (/livez) + readiness (/readyz, pings the inference worker) probes.
 builder.Services.AddAppHealthChecks();
 
@@ -158,6 +167,10 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();
 
+// Keep the MCP surface LAN/WireGuard-only: 404 any /mcp request that arrived via the
+// Cloudflare Tunnel (backstop behind the tunnel ingress not routing /mcp at all).
+app.UseMcpLanOnly();
+
 app.MapOpenApi("/openapi/{documentName}.json").AllowAnonymous();
 app.MapScalarApiReference("/scalar", o => o
         .WithTitle("FlorenceApi")
@@ -173,6 +186,11 @@ app.MapGrounding().RequireAuthorization();
 app.MapOcr().RequireAuthorization();
 app.MapOcrRegions().RequireAuthorization();
 app.MapSegmentations().RequireAuthorization();
+
+// Agent MCP surface (Streamable HTTP). Mapped AFTER UseAuthentication/UseAuthorization so the
+// same X-API-Key scheme validates it; RequireAuthorization rejects anonymous calls with 401.
+// Exposure is LAN/WireGuard-only — the Cloudflare Tunnel must not route /mcp (see deploy notes).
+app.MapMcp("/mcp").RequireAuthorization();
 
 app.Run();
 
