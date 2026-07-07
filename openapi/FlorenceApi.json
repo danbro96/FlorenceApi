@@ -1,0 +1,944 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "FlorenceApi",
+    "description": "Self-hosted image recognition API powered by Microsoft Florence-2 (OpenVINO/Intel Arc). All requests are JSON with the image base64-encoded in the body. Authenticate by sending your key in the `X-API-Key` header.",
+    "version": "v1"
+  },
+  "paths": {
+    "/options": {
+      "get": {
+        "tags": [
+          "Meta"
+        ],
+        "summary": "Runtime options reported by the worker (model, device, limits).",
+        "description": "Returns the model id and Hugging Face revision currently loaded, the OpenVINO device\nin use (`GPU`, `GPU.0`, `CPU`, …), the max image upload size, and the accepted image\nformats. The list of recognition tasks lives in the OpenAPI spec at `/openapi/v1.json`\n— fetch that for client codegen.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OptionsResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
+    "/captions": {
+      "post": {
+        "tags": [
+          "Captions"
+        ],
+        "summary": "Generate a natural-language caption for an image.",
+        "description": "Returns a single caption string describing the image content.\n\nThe `detail` field selects verbosity:\n- `short` (default) — a brief one-sentence caption.\n- `detailed` — a longer descriptive caption with more visual detail.\n- `more_detailed` — a multi-sentence caption with fine-grained description.\n\nMaps to Florence-2 tasks `<CAPTION>`, `<DETAILED_CAPTION>`, `<MORE_DETAILED_CAPTION>`.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaptionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaptionResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
+    "/detections": {
+      "post": {
+        "tags": [
+          "Detections"
+        ],
+        "summary": "Detect objects or regions in an image.",
+        "description": "Returns axis-aligned bounding boxes (`[x1, y1, x2, y2]` in pixel coords) and labels.\n\nThe `variant` field selects the detection mode:\n- `od` (default) — object detection over the COCO-style label set.\n- `dense` — dense region captioning; one label per region with descriptive captions.\n- `proposal` — class-agnostic region proposals with empty labels.\n\nMaps to Florence-2 tasks `<OD>`, `<DENSE_REGION_CAPTION>`, `<REGION_PROPOSAL>`.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DetectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetectionResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
+    "/grounding": {
+      "post": {
+        "tags": [
+          "Grounding"
+        ],
+        "summary": "Locate phrases from a caption inside an image.",
+        "description": "Given an image and a free-text caption (in `text`), returns bounding boxes for the noun\nphrases mentioned in that caption. Each label is the matched phrase; each box is its\ncorresponding region.\n\nExample: `text = \"a cat on a sofa\"` returns boxes for \"a cat\" and \"a sofa\".\n\nMaps to Florence-2 task `<CAPTION_TO_PHRASE_GROUNDING>`.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GroundingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetectionResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
+    "/ocr": {
+      "post": {
+        "tags": [
+          "OCR"
+        ],
+        "summary": "Extract text from an image (no regions).",
+        "description": "Returns the recognized text as a single string. No coordinates.\n\nUse `/ocr/regions` if you need per-text-block bounding boxes.\n\nMaps to Florence-2 task `<OCR>`.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OcrRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OcrResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
+    "/ocr/regions": {
+      "post": {
+        "tags": [
+          "OCR"
+        ],
+        "summary": "Extract text from an image with per-region polygons, bounding boxes, rotation, and confidence.",
+        "description": "Returns a list of recognized text regions plus the image dimensions the regions are\nexpressed in. Regions are sorted top-to-bottom, left-to-right.\n\nEach region carries:\n\n- `text` — recognized text.\n- `quad` — 8-element polygon `[x1,y1,x2,y2,x3,y3,x4,y4]`, ordered TL, TR, BR, BL.\n  Native shape from Florence-2; preserved verbatim for clients that need rotated polygons.\n- `box` — axis-aligned bounding box derived from `quad` (server-side).\n- `rotation` — degrees, derived from the top edge of `quad` via `atan2(y2-y1, x2-x1)`.\n  Range `(-180, 180]`; ~0 for upright text, ~±180 for upside-down. Florence-2 does not\n  expose a rotation field natively — this is computed from the quad geometry.\n- `confidence` — mean per-token probability of the region's label tokens, in `[0, 1]`.\n  Useful as a relative ranking signal; not a calibrated probability.\n\nMaps to Florence-2 task `<OCR_WITH_REGION>`.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OcrRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OcrRegionsResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    },
+    "/segmentations": {
+      "post": {
+        "tags": [
+          "Segmentations"
+        ],
+        "summary": "Segment a region described by free text.",
+        "description": "Given an image and a free-text expression (in `text`), returns one or more polygons\ncovering the matching region(s) plus labels.\n\n`polygons` is `polygons[i][j]` = polygon `j` of region `i`, each polygon a flat\n`[x1, y1, x2, y2, ...]` array of pixel coordinates. A region may consist of multiple\ndisjoint polygons (e.g. an object split by occlusion).\n\nMaps to Florence-2 task `<REFERRING_EXPRESSION_SEGMENTATION>`.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SegmentationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SegmentationResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKey": [ ]
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "BoundingBox": {
+        "required": [
+          "x_min",
+          "y_min",
+          "x_max",
+          "y_max"
+        ],
+        "type": "object",
+        "properties": {
+          "x_min": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "y_min": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "x_max": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "y_max": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          }
+        }
+      },
+      "CaptionDetail": {
+        "enum": [
+          "short",
+          "detailed",
+          "more_detailed"
+        ]
+      },
+      "CaptionRequest": {
+        "required": [
+          "image"
+        ],
+        "type": "object",
+        "properties": {
+          "detail": {
+            "$ref": "#/components/schemas/CaptionDetail"
+          },
+          "image": {
+            "type": "string"
+          },
+          "media_type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "CaptionResult": {
+        "required": [
+          "caption"
+        ],
+        "type": "object",
+        "properties": {
+          "caption": {
+            "type": "string"
+          }
+        }
+      },
+      "DetectionRequest": {
+        "required": [
+          "image"
+        ],
+        "type": "object",
+        "properties": {
+          "variant": {
+            "$ref": "#/components/schemas/DetectionVariant"
+          },
+          "image": {
+            "type": "string"
+          },
+          "media_type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "DetectionResult": {
+        "required": [
+          "bboxes",
+          "labels"
+        ],
+        "type": "object",
+        "properties": {
+          "bboxes": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+                "type": [
+                  "number",
+                  "string"
+                ],
+                "format": "double"
+              }
+            }
+          },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "DetectionVariant": {
+        "enum": [
+          "od",
+          "dense",
+          "proposal"
+        ]
+      },
+      "GroundingRequest": {
+        "required": [
+          "text",
+          "image"
+        ],
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "image": {
+            "type": "string"
+          },
+          "media_type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ImageSize": {
+        "required": [
+          "width",
+          "height"
+        ],
+        "type": "object",
+        "properties": {
+          "width": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "height": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "OcrRegion": {
+        "required": [
+          "text",
+          "quad",
+          "box",
+          "rotation",
+          "confidence"
+        ],
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "quad": {
+            "type": "array",
+            "items": {
+              "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+              "type": [
+                "number",
+                "string"
+              ],
+              "format": "double"
+            }
+          },
+          "box": {
+            "$ref": "#/components/schemas/BoundingBox"
+          },
+          "rotation": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "confidence": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          }
+        }
+      },
+      "OcrRegionsResult": {
+        "required": [
+          "regions",
+          "image"
+        ],
+        "type": "object",
+        "properties": {
+          "regions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OcrRegion"
+            }
+          },
+          "image": {
+            "$ref": "#/components/schemas/ImageSize"
+          }
+        }
+      },
+      "OcrRequest": {
+        "required": [
+          "image"
+        ],
+        "type": "object",
+        "properties": {
+          "image": {
+            "type": "string"
+          },
+          "media_type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "OcrResult": {
+        "required": [
+          "text"
+        ],
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          }
+        }
+      },
+      "OptionsResponse": {
+        "required": [
+          "model",
+          "revision",
+          "device",
+          "max_image_bytes",
+          "supported_formats"
+        ],
+        "type": "object",
+        "properties": {
+          "model": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "string"
+          },
+          "device": {
+            "type": "string"
+          },
+          "max_image_bytes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "supported_formats": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "instance": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "SegmentationRequest": {
+        "required": [
+          "text",
+          "image"
+        ],
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "image": {
+            "type": "string"
+          },
+          "media_type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "SegmentationResult": {
+        "required": [
+          "polygons",
+          "labels"
+        ],
+        "type": "object",
+        "properties": {
+          "polygons": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": {
+                  "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "format": "double"
+                }
+              }
+            }
+          },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "ApiKey": {
+        "type": "apiKey",
+        "description": "API key. Send in the X-API-Key header.",
+        "name": "X-API-Key",
+        "in": "header"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Meta"
+    },
+    {
+      "name": "Captions"
+    },
+    {
+      "name": "Detections"
+    },
+    {
+      "name": "Grounding"
+    },
+    {
+      "name": "OCR"
+    },
+    {
+      "name": "Segmentations"
+    }
+  ]
+}
