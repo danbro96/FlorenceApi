@@ -1,10 +1,10 @@
+using System.ComponentModel;
 using FlorenceApi.Handlers;
 using FlorenceApi.Models;
 using FlorenceApi.Models.Enums;
 using Microsoft.AspNetCore.Http.HttpResults;
 using ModelContextProtocol;
 using ModelContextProtocol.Server;
-using System.ComponentModel;
 
 namespace FlorenceApi.Mcp;
 
@@ -79,7 +79,7 @@ public sealed class VisionTools
         where T : notnull
     {
         var result = await call;
-        return ((INestedHttpResult)result).Result switch
+        return ((INestedHttpResult) result).Result switch
         {
             Ok<T> ok => ok.Value!,
             ProblemHttpResult problem => throw new McpException(problem.ProblemDetails.Detail ?? "vision request failed"),

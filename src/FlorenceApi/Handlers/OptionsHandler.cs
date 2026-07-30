@@ -1,9 +1,9 @@
+using System.Text.Json;
 using FlorenceApi.Models;
 using FlorenceApi.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
-using System.Text.Json;
 
 namespace FlorenceApi.Handlers;
 

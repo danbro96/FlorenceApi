@@ -1,3 +1,6 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 using FlorenceApi.Auth;
 using FlorenceApi.Endpoints;
 using FlorenceApi.Handlers;
@@ -11,9 +14,6 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Scalar.AspNetCore;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 

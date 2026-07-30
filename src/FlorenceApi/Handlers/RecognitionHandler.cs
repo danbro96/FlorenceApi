@@ -1,11 +1,11 @@
+using System.Diagnostics;
+using System.Net;
+using System.Text.Json;
 using FlorenceApi.Models;
 using FlorenceApi.Models.Enums;
 using FlorenceApi.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Extensions.Options;
-using System.Diagnostics;
-using System.Net;
-using System.Text.Json;
 
 namespace FlorenceApi.Handlers;
 
@@ -230,7 +230,7 @@ public sealed class RecognitionHandler
             throw new JsonException("worker returned mismatched quad_boxes/labels lengths");
 
         var regions = new List<OcrRegion>(quads.Length);
-        for (int i = 0; i < quads.Length; i++)
+        for (var i = 0; i < quads.Length; i++)
         {
             var q = quads[i];
             if (q.Length != 8)
@@ -317,7 +317,7 @@ public sealed class RecognitionHandler
     private static BoundingBox ComputeBoundingBox(double[] quad)
     {
         double xMin = quad[0], xMax = quad[0], yMin = quad[1], yMax = quad[1];
-        for (int i = 2; i < 8; i += 2)
+        for (var i = 2; i < 8; i += 2)
         {
             var x = quad[i];
             var y = quad[i + 1];
