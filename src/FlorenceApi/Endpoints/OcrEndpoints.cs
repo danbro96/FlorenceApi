@@ -26,7 +26,8 @@ public static class OcrEndpoints
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status413PayloadTooLarge)
             .ProducesProblem(StatusCodes.Status502BadGateway)
-            .ProducesProblem(StatusCodes.Status504GatewayTimeout);
+            .ProducesProblem(StatusCodes.Status504GatewayTimeout)
+            .WithName("CreateOcr");
 
     public static IEndpointConventionBuilder MapOcrRegions(this IEndpointRouteBuilder app) =>
         app.MapPost("/ocr/regions", (
@@ -59,5 +60,6 @@ public static class OcrEndpoints
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status413PayloadTooLarge)
             .ProducesProblem(StatusCodes.Status502BadGateway)
-            .ProducesProblem(StatusCodes.Status504GatewayTimeout);
+            .ProducesProblem(StatusCodes.Status504GatewayTimeout)
+            .WithName("CreateOcrRegions");
 }

@@ -20,5 +20,6 @@ public static class OptionsEndpoints
                 """)
             .Produces<OptionsResponse>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status502BadGateway)
-            .ProducesProblem(StatusCodes.Status503ServiceUnavailable);
+            .ProducesProblem(StatusCodes.Status503ServiceUnavailable)
+            .WithName("GetOptions");
 }

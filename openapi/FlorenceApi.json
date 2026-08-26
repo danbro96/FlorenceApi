@@ -13,6 +13,7 @@
         ],
         "summary": "Runtime options reported by the worker (model, device, limits).",
         "description": "Returns the model id and Hugging Face revision currently loaded, the OpenVINO device\nin use (`GPU`, `GPU.0`, `CPU`, …), the max image upload size, and the accepted image\nformats. The list of recognition tasks lives in the OpenAPI spec at `/openapi/v1.json`\n— fetch that for client codegen.",
+        "operationId": "GetOptions",
         "responses": {
           "200": {
             "description": "OK",
@@ -69,6 +70,7 @@
         ],
         "summary": "Generate a natural-language caption for an image.",
         "description": "Returns a single caption string describing the image content.\n\nThe `detail` field selects verbosity:\n- `short` (default) — a brief one-sentence caption.\n- `detailed` — a longer descriptive caption with more visual detail.\n- `more_detailed` — a multi-sentence caption with fine-grained description.\n\nMaps to Florence-2 tasks `<CAPTION>`, `<DETAILED_CAPTION>`, `<MORE_DETAILED_CAPTION>`.",
+        "operationId": "CreateCaption",
         "requestBody": {
           "content": {
             "application/json": {
@@ -155,6 +157,7 @@
         ],
         "summary": "Detect objects or regions in an image.",
         "description": "Returns axis-aligned bounding boxes (`[x1, y1, x2, y2]` in pixel coords) and labels.\n\nThe `variant` field selects the detection mode:\n- `od` (default) — object detection over the COCO-style label set.\n- `dense` — dense region captioning; one label per region with descriptive captions.\n- `proposal` — class-agnostic region proposals with empty labels.\n\nMaps to Florence-2 tasks `<OD>`, `<DENSE_REGION_CAPTION>`, `<REGION_PROPOSAL>`.",
+        "operationId": "CreateDetection",
         "requestBody": {
           "content": {
             "application/json": {
@@ -241,6 +244,7 @@
         ],
         "summary": "Locate phrases from a caption inside an image.",
         "description": "Given an image and a free-text caption (in `text`), returns bounding boxes for the noun\nphrases mentioned in that caption. Each label is the matched phrase; each box is its\ncorresponding region.\n\nExample: `text = \"a cat on a sofa\"` returns boxes for \"a cat\" and \"a sofa\".\n\nMaps to Florence-2 task `<CAPTION_TO_PHRASE_GROUNDING>`.",
+        "operationId": "CreateGrounding",
         "requestBody": {
           "content": {
             "application/json": {
@@ -327,6 +331,7 @@
         ],
         "summary": "Extract text from an image (no regions).",
         "description": "Returns the recognized text as a single string. No coordinates.\n\nUse `/ocr/regions` if you need per-text-block bounding boxes.\n\nMaps to Florence-2 task `<OCR>`.",
+        "operationId": "CreateOcr",
         "requestBody": {
           "content": {
             "application/json": {
@@ -413,6 +418,7 @@
         ],
         "summary": "Extract text from an image with per-region polygons, bounding boxes, rotation, and confidence.",
         "description": "Returns a list of recognized text regions plus the image dimensions the regions are\nexpressed in. Regions are sorted top-to-bottom, left-to-right.\n\nEach region carries:\n\n- `text` — recognized text.\n- `quad` — 8-element polygon `[x1,y1,x2,y2,x3,y3,x4,y4]`, ordered TL, TR, BR, BL.\n  Native shape from Florence-2; preserved verbatim for clients that need rotated polygons.\n- `box` — axis-aligned bounding box derived from `quad` (server-side).\n- `rotation` — degrees, derived from the top edge of `quad` via `atan2(y2-y1, x2-x1)`.\n  Range `(-180, 180]`; ~0 for upright text, ~±180 for upside-down. Florence-2 does not\n  expose a rotation field natively — this is computed from the quad geometry.\n- `confidence` — mean per-token probability of the region's label tokens, in `[0, 1]`.\n  Useful as a relative ranking signal; not a calibrated probability.\n\nMaps to Florence-2 task `<OCR_WITH_REGION>`.",
+        "operationId": "CreateOcrRegions",
         "requestBody": {
           "content": {
             "application/json": {
@@ -499,6 +505,7 @@
         ],
         "summary": "Segment a region described by free text.",
         "description": "Given an image and a free-text expression (in `text`), returns one or more polygons\ncovering the matching region(s) plus labels.\n\n`polygons` is `polygons[i][j]` = polygon `j` of region `i`, each polygon a flat\n`[x1, y1, x2, y2, ...]` array of pixel coordinates. A region may consist of multiple\ndisjoint polygons (e.g. an object split by occlusion).\n\nMaps to Florence-2 task `<REFERRING_EXPRESSION_SEGMENTATION>`.",
+        "operationId": "CreateSegmentation",
         "requestBody": {
           "content": {
             "application/json": {
