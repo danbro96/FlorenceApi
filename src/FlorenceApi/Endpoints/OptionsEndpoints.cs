@@ -1,5 +1,5 @@
-using FlorenceApi.Handlers;
 using FlorenceApi.Dtos;
+using FlorenceApi.Handlers;
 
 namespace FlorenceApi.Endpoints;
 

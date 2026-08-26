@@ -1,12 +1,12 @@
-using FlorenceApi.Http;
-using System.Globalization;
 using System.Diagnostics;
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using FlorenceApi.Auth;
 using FlorenceApi.Endpoints;
 using FlorenceApi.Handlers;
+using FlorenceApi.Http;
 using FlorenceApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
