@@ -1,10 +1,12 @@
+using FlorenceApi.Http;
+using System.Globalization;
+using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using FlorenceApi.Auth;
 using FlorenceApi.Endpoints;
 using FlorenceApi.Handlers;
-using FlorenceApi.Dtos;
 using FlorenceApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
@@ -91,6 +93,10 @@ var maxImageBytes = builder.Configuration.GetValue("Florence:MaxImageBytes", 8 *
 builder.WebHost.ConfigureKestrel(o =>
     o.Limits.MaxRequestBodySize = (long) (maxImageBytes * 4 / 3) + (128 * 1024));
 
+builder.Services.AddProblemDetails(o => o.CustomizeProblemDetails = ctx =>
+    ctx.ProblemDetails.Extensions["traceId"] = Activity.Current?.Id ?? ctx.HttpContext.TraceIdentifier);
+builder.Services.AddExceptionHandler<ProblemExceptionHandler>();
+
 builder.Services.AddOpenApi("v1", options =>
 {
     options.AddDocumentTransformer((document, context, _) =>
@@ -129,9 +135,64 @@ builder.Services.AddOpenApi("v1", options =>
             });
         }
 
+        // The cross-cutting code no endpoint declares — ProblemExceptionHandler produces it.
+
+        AddProblem(operation, context.Document, StatusCodes.Status500InternalServerError, "Internal server error");
+
+
+        // Bodyless 4xx/5xx come from the non-generic arms of the typed-result unions (NotFound,
+
+        // UnauthorizedHttpResult). UseStatusCodePages fills them at runtime, so declare the shape.
+
+        foreach (var code in operation.Responses?.Keys.ToList() ?? [])
+
+        {
+
+            if (code.Length != 3 || code[0] is not ('4' or '5')) continue;
+
+            var existing = operation.Responses![code];
+
+            if (existing.Content is { Count: > 0 }) continue;
+
+            operation.Responses[code] = new OpenApiResponse
+
+            { Description = existing.Description, Content = ProblemContent(context.Document) };
+
+        }
+
+
         return Task.CompletedTask;
     });
 });
+
+// Every error response carries the same shape, so a generated client types its error once instead of
+// falling back to `void`.
+static Dictionary<string, OpenApiMediaType> ProblemContent(OpenApiDocument document) =>
+    new() { ["application/problem+json"] = new() { Schema = new OpenApiSchemaReference("ProblemDetails", document) } };
+
+static void AddProblem(OpenApiOperation operation, OpenApiDocument document, int status, string description)
+{
+    var code = status.ToString(CultureInfo.InvariantCulture);
+    operation.Responses ??= [];
+    if (operation.Responses.ContainsKey(code)) return;
+    operation.Responses[code] = new OpenApiResponse { Description = description, Content = ProblemContent(document) };
+}
+
+/// RFC 9457. Declared here because nothing returns the CLR type directly, so the generator never emits it.
+static OpenApiSchema ProblemDetailsSchema() => new()
+{
+    Type = JsonSchemaType.Object,
+    Description = "RFC 9457 problem details.",
+    Properties = new Dictionary<string, IOpenApiSchema>
+    {
+        ["type"] = new OpenApiSchema { Type = JsonSchemaType.String | JsonSchemaType.Null },
+        ["title"] = new OpenApiSchema { Type = JsonSchemaType.String | JsonSchemaType.Null },
+        ["status"] = new OpenApiSchema { Type = JsonSchemaType.Integer | JsonSchemaType.Null, Format = "int32" },
+        ["detail"] = new OpenApiSchema { Type = JsonSchemaType.String | JsonSchemaType.Null },
+        ["instance"] = new OpenApiSchema { Type = JsonSchemaType.String | JsonSchemaType.Null },
+        ["traceId"] = new OpenApiSchema { Type = JsonSchemaType.String | JsonSchemaType.Null },
+    },
+};
 
 var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"];
 if (!string.IsNullOrWhiteSpace(otlpEndpoint))

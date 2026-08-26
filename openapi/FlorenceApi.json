@@ -43,6 +43,16 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -112,6 +122,16 @@
           },
           "504": {
             "description": "Gateway Timeout",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -195,6 +215,16 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -264,6 +294,16 @@
           },
           "504": {
             "description": "Gateway Timeout",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -347,6 +387,16 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -423,6 +473,16 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -492,6 +552,16 @@
           },
           "504": {
             "description": "Gateway Timeout",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -716,9 +786,11 @@
                 "string"
               ],
               "format": "double"
-            }
+            },
+            "description": "8-element polygon as `[x1,y1,x2,y2,x3,y3,x4,y4]`, ordered TL, TR, BR, BL.\nNative shape from Florence-2; preserved verbatim for clients that need rotated polygons."
           },
           "box": {
+            "description": "Axis-aligned bounding box derived from double[] OcrRegion.Quad.",
             "$ref": "#/components/schemas/BoundingBox"
           },
           "rotation": {
@@ -727,6 +799,7 @@
               "number",
               "string"
             ],
+            "description": "Region rotation in degrees, derived from the top edge of double[] OcrRegion.Quad via\n`atan2(y2-y1, x2-x1)`. Range `(-180, 180]`; ~0 for upright text, ~±180 for upside-down.",
             "format": "double"
           },
           "confidence": {
@@ -735,6 +808,7 @@
               "number",
               "string"
             ],
+            "description": "Mean per-token probability of this region's label tokens, in `[0, 1]`.\nRelative ranking signal — not a calibrated probability.",
             "format": "double"
           }
         }
@@ -750,9 +824,11 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/OcrRegion"
-            }
+            },
+            "description": "Recognized text regions, sorted top-to-bottom and left-to-right."
           },
           "image": {
+            "description": "Pixel dimensions of the image the regions are expressed in.",
             "$ref": "#/components/schemas/ImageSize"
           }
         }
