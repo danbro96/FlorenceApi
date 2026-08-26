@@ -1,9 +1,9 @@
 using FlorenceApi.Handlers;
-using FlorenceApi.Models;
+using FlorenceApi.Dtos;
 
 namespace FlorenceApi.Endpoints;
 
-public static class OptionsEndpoint
+public static class OptionsEndpoints
 {
     public static IEndpointConventionBuilder MapOptionsEndpoint(this IEndpointRouteBuilder app) =>
         app.MapGet("/options", (

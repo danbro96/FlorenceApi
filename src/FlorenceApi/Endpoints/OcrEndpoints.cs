@@ -1,10 +1,10 @@
 using FlorenceApi.Handlers;
-using FlorenceApi.Models;
+using FlorenceApi.Dtos;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FlorenceApi.Endpoints;
 
-public static class OcrEndpoint
+public static class OcrEndpoints
 {
     public static IEndpointConventionBuilder MapOcr(this IEndpointRouteBuilder app) =>
         app.MapPost("/ocr", (

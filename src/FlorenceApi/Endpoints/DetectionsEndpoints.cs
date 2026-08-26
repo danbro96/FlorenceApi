@@ -1,10 +1,10 @@
 using FlorenceApi.Handlers;
-using FlorenceApi.Models;
+using FlorenceApi.Dtos;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FlorenceApi.Endpoints;
 
-public static class DetectionsEndpoint
+public static class DetectionsEndpoints
 {
     public static IEndpointConventionBuilder MapDetections(this IEndpointRouteBuilder app) =>
         app.MapPost("/detections", (

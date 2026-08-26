@@ -1,4 +1,4 @@
-namespace FlorenceApi.Models;
+namespace FlorenceApi.Services;
 
 public sealed class FlorenceOptions
 {

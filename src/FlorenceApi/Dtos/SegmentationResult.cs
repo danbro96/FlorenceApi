@@ -1,4 +1,4 @@
-namespace FlorenceApi.Models;
+namespace FlorenceApi.Dtos;
 
 public sealed class SegmentationResult
 {

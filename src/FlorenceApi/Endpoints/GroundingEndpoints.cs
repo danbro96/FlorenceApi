@@ -1,10 +1,10 @@
 using FlorenceApi.Handlers;
-using FlorenceApi.Models;
+using FlorenceApi.Dtos;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FlorenceApi.Endpoints;
 
-public static class GroundingEndpoint
+public static class GroundingEndpoints
 {
     public static IEndpointConventionBuilder MapGrounding(this IEndpointRouteBuilder app) =>
         app.MapPost("/grounding", (

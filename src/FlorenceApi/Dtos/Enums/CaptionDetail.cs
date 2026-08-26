@@ -1,4 +1,4 @@
-namespace FlorenceApi.Models.Enums;
+namespace FlorenceApi.Dtos.Enums;
 
 public enum CaptionDetail
 {

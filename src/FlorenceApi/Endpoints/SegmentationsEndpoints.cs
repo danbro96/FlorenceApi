@@ -1,10 +1,10 @@
 using FlorenceApi.Handlers;
-using FlorenceApi.Models;
+using FlorenceApi.Dtos;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FlorenceApi.Endpoints;
 
-public static class SegmentationsEndpoint
+public static class SegmentationsEndpoints
 {
     public static IEndpointConventionBuilder MapSegmentations(this IEndpointRouteBuilder app) =>
         app.MapPost("/segmentations", (

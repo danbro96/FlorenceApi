@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using FlorenceApi.Handlers;
-using FlorenceApi.Models;
-using FlorenceApi.Models.Enums;
+using FlorenceApi.Dtos;
+using FlorenceApi.Dtos.Enums;
 using Microsoft.AspNetCore.Http.HttpResults;
 using ModelContextProtocol;
 using ModelContextProtocol.Server;

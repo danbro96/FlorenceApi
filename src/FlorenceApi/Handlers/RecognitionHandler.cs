@@ -1,8 +1,8 @@
 using System.Diagnostics;
 using System.Net;
 using System.Text.Json;
-using FlorenceApi.Models;
-using FlorenceApi.Models.Enums;
+using FlorenceApi.Dtos;
+using FlorenceApi.Dtos.Enums;
 using FlorenceApi.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Extensions.Options;

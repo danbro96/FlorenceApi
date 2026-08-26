@@ -4,7 +4,7 @@ using System.Threading.RateLimiting;
 using FlorenceApi.Auth;
 using FlorenceApi.Endpoints;
 using FlorenceApi.Handlers;
-using FlorenceApi.Models;
+using FlorenceApi.Dtos;
 using FlorenceApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;

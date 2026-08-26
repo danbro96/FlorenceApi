@@ -4,7 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using FlorenceApi.Handlers;
 using FlorenceApi.Mcp;
-using FlorenceApi.Models;
+using FlorenceApi.Dtos;
 using FlorenceApi.Services;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;

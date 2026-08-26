@@ -1,6 +1,6 @@
-using FlorenceApi.Models.Enums;
+using FlorenceApi.Dtos.Enums;
 
-namespace FlorenceApi.Models;
+namespace FlorenceApi.Dtos;
 
 public sealed class DetectionRequest : ImageRequest
 {
