@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using FlorenceApi.Auth;
+using FlorenceApi.Dependencies;
 using FlorenceApi.Endpoints;
 using FlorenceApi.Handlers;
 using FlorenceApi.Http;
@@ -30,6 +31,16 @@ builder.Services.AddHttpClient<FlorenceClient>((sp, http) =>
     http.BaseAddress = new Uri(opts.WorkerUrl);
     http.Timeout = TimeSpan.FromSeconds(opts.RequestTimeoutSeconds);
 });
+
+builder.Services.Configure<DepzOptions>(builder.Configuration.GetSection(DepzOptions.SectionName));
+var depzOptions = builder.Configuration.GetSection(DepzOptions.SectionName).Get<DepzOptions>() ?? new DepzOptions();
+var florenceOptions = builder.Configuration.GetSection("Florence").Get<FlorenceOptions>() ?? new FlorenceOptions();
+builder.Services.AddSingleton(DependencyTargets.From(florenceOptions));
+builder.Services.AddSingleton<DependencyReportCache>();
+builder.Services.AddSingleton<DependencyProbe>();
+builder.Services.AddHttpClient(DependencyProbe.ProbeClientName, c => c.Timeout = depzOptions.ProbeTimeout);
+if (depzOptions.Enabled)
+    builder.Services.AddHostedService<DependencyPollWorker>();
 
 builder.Services.AddScoped<RecognitionHandler>();
 builder.Services.AddScoped<OptionsHandler>();
@@ -201,7 +212,8 @@ if (!string.IsNullOrWhiteSpace(otlpEndpoint))
             {
                 o.RecordException = true;
                 // Health probes are polled constantly by docker + devops-monitor; their spans add nothing.
-                o.Filter = ctx => ctx.Request.Path != "/livez" && ctx.Request.Path != "/readyz";
+                o.Filter = ctx => ctx.Request.Path != "/livez" && ctx.Request.Path != "/readyz"
+                    && ctx.Request.Path != "/depz";
             })
             .AddHttpClientInstrumentation()
             .AddOtlpExporter())
@@ -243,6 +255,7 @@ app.MapScalarApiReference("/scalar", o => o
     .AllowAnonymous();
 
 app.MapAppHealthChecks(app.Environment);
+app.MapDepz();
 app.MapOptionsEndpoint().RequireAuthorization();
 
 app.MapCaptions().RequireAuthorization();
