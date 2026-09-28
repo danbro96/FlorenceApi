@@ -193,6 +193,15 @@ def _per_region_confidence(generated_ids, transition_scores, tokenizer) -> list[
     return confidences
 
 
+_SPECIAL_TOKENS = ("</s>", "<s>", "<pad>")
+
+
+def _strip_special_tokens(text: str) -> str:
+    for token in _SPECIAL_TOKENS:
+        text = text.replace(token, "")
+    return text.strip()
+
+
 def _run_inference(prompt: str, task_token: str, img: Image.Image):
     processor = state["processor"]
     model = state["model"]
@@ -229,6 +238,9 @@ def _run_inference(prompt: str, task_token: str, img: Image.Image):
             elif len(confidence) > n:
                 confidence = confidence[:n]
             result["confidence"] = confidence
+            # Decoding keeps special tokens (the parser needs <loc_*>), so `</s>` etc. leak into labels.
+            if "labels" in result:
+                result["labels"] = [_strip_special_tokens(label) for label in result["labels"]]
         return parsed
 
     return parsed
