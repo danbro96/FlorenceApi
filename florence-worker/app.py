@@ -3,6 +3,7 @@ import io
 import logging
 import math
 import os
+import re
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -193,13 +194,13 @@ def _per_region_confidence(generated_ids, transition_scores, tokenizer) -> list[
     return confidences
 
 
-_SPECIAL_TOKENS = ("</s>", "<s>", "<pad>")
+# Sequence and layout tokens. A malformed region burst (seen on upside-down cards) leaves <loc_N>/<poly>
+# markup inside a label instead of being parsed into a box.
+_SPECIAL_TOKEN_RE = re.compile(r"</?(?:s|pad|poly|sep)>|<loc_\d+>")
 
 
 def _strip_special_tokens(text: str) -> str:
-    for token in _SPECIAL_TOKENS:
-        text = text.replace(token, "")
-    return text.strip()
+    return _SPECIAL_TOKEN_RE.sub("", text).strip()
 
 
 def _run_inference(prompt: str, task_token: str, img: Image.Image):
