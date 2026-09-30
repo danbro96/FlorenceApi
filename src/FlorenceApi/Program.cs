@@ -8,6 +8,7 @@ using FlorenceApi.Dependencies;
 using FlorenceApi.Endpoints;
 using FlorenceApi.Handlers;
 using FlorenceApi.Http;
+using FlorenceApi.Mcp;
 using FlorenceApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
@@ -52,6 +53,7 @@ builder.Services.AddScoped<OptionsHandler>();
 builder.Services
     .AddMcpServer()
     .WithHttpTransport()
+    .WithRequestFilters(f => f.AddCallToolFilter(StrictToolArguments.Filter))
     .WithToolsFromAssembly();
 
 // Liveness (/livez) + readiness (/readyz, pings the inference worker) probes.
